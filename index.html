@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>لعبة X O</title>
+<style>
+:root {
+  --turquoise-light: #a8f5f0;
+  --turquoise: #36d1c4;
+  --turquoise-dark: #139c8f;
+ --white: #ffffff;
+  --gray-light: #f3f9f9;
+  --shadow: rgba(0, 0, 0, 0.15);
+  --radius: 16px;
+  --transition: 0.3s ease;
+}
+
+body {
+  font-family: 'Segoe UI', 'Noto Sans Arabic', sans-serif;
+  margin: 0;
+  height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: linear-gradient(135deg, #baf7f2, #36d1c4);
+}
+
+.game-container {
+  background: linear-gradient(145deg, #ffffff, #d1f7f4);
+  padding: 24px 20px;
+  border-radius: var(--radius);
+  box-shadow: 0 12px 25px var(--shadow), inset 0 0 8px rgba(255,255,255,0.3);
+  width: min(380px, 95%);
+  text-align: center;
+  position: relative;
+}
+
+h1 {
+  font-size: 24px;
+  color: var(--turquoise-dark);
+  margin-bottom: 14px;
+  font-weight: bold;
+  text-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
+.board {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(3, 1fr);
+  gap: 10px;
+  margin: 18px auto;
+  width: 100%;
+  max-width: 360px;
+  aspect-ratio: 1/1;
+}
+
+.cell {
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(145deg, #e0f7f5, #baf7f2);
+  border: 3px solid var(--turquoise);
+  border-radius: 10px;
+  font-size: 42px;
+  font-weight: 700;
+  color: var(--turquoise-dark);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1), inset 0 2px 4px rgba(255,255,255,0.5);
+  transition: all var(--transition);
+}
+
+.cell:hover {
+  transform: translateY(-4px) scale(1.05);
+  box-shadow: 0 6px 20px rgba(54, 209, 196, 0.25), inset 0 3px 5px rgba(255,255,255,0.5);
+}
+
+.cell.disabled {
+  pointer-events: none;
+  opacity: 0.95;
+}
+
+.status {
+  font-weight: 700;
+  font-size: 16px;
+  color: var(--turquoise-dark);
+  margin-top: 10px;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.1);
+}
+
+button {
+  background: linear-gradient(90deg, var(--turquoise), var(--turquoise-dark));
+  color: white;
+  border: none;
+  border-radius: 12px;
+  padding: 10px 18px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: bold;
+  margin: 8px 5px 0 5px;
+  box-shadow: 0 4px 12px rgba(19,156,143,0.3);
+  transition: transform var(--transition);
+}
+
+button:hover {
+  transform: scale(1.06);
+}
+
+.scoreboard {
+  display: flex;
+  justify-content: space-around;
+  margin-top: 14px;
+  font-size: 14px;
+  color: #0d4742;
+}
+
+.scoreboard div {
+  background: linear-gradient(145deg, #e0f7f5, #baf7f2);
+  border-radius: 12px;
+  padding: 8px 10px;
+  box-shadow: 0 3px 10px rgba(0,0,0,0.1), inset 0 1px 2px rgba(255,255,255,0.3);
+  min-width: 55px;
+  font-weight: bold;
+}
+
+.cell.x {
+  background: linear-gradient(145deg, #36d1c4, #0bb39c);
+  color: #fff;
+  box-shadow: 0 5px 15px rgba(0,180,160,0.4), inset 0 2px 5px rgba(255,255,255,0.3);
+  transform: scale(1.08);
+}
+
+.cell.o {
+  background: linear-gradient(145deg, #36c4d1, #139c8f);
+  color: #fff;
+  box-shadow: 0 5px 15px rgba(0,156,143,0.4), inset 0 2px 5px rgba(255,255,255,0.3);
+  transform: scale(1.08);
+}
+</style>
+</head>
+<body>
+<div class="game-container">
+  <h1>لعبة X O</h1>
+
+  <div class="board" id="board"></div>
+
+  <div class="status" id="status">دور اللاعب: X</div>
+  <div>
+    <button id="restart">إعادة اللعب</button>
+    <button id="resetAll">ابدأ من جديد</button>
+  </div>
+
+  <div class="scoreboard">
+    <div>X فاز: <span id="scoreX">0</span></div>
+    <div>O فاز: <span id="scoreO">0</span></div>
+    <div>مجموع الألعاب: <span id="scoreTotal">0</span></div>
+  </div>
+</div>
+
+<script>
+const board = document.getElementById('board');
+const statusText = document.getElementById('status');
+const restartBtn = document.getElementById('restart');
+const resetBtn = document.getElementById('resetAll');
+const scoreXEl = document.getElementById('scoreX');
+const scoreOEl = document.getElementById('scoreO');
+const scoreTotalEl = document.getElementById('scoreTotal');
+
+let cells = [];
+let currentPlayer = 'X';
+let boardState = Array(9).fill(null);
+let gameActive = true;
+let scores = JSON.parse(localStorage.getItem('xo_turquoise_scores') || '{"X":0,"O":0,"total":0}');
+
+function createBoard() {
+  board.innerHTML = '';
+  cells = [];
+  for (let i = 0; i < 9; i++) {
+    const cell = document.createElement('div');
+    cell.classList.add('cell');
+    cell.addEventListener('click', () => handleMove(i, cell));
+    board.appendChild(cell);
+    cells.push(cell);
+  }
+}
+
+function handleMove(i, cell) {
+  if (!gameActive || boardState[i]) return;
+  boardState[i] = currentPlayer;
+  cell.textContent = currentPlayer;
+  cell.classList.add('disabled', currentPlayer.toLowerCase());
+  playSound();
+
+  if (checkWin()) {
+    endGame(false);
+  } else if (boardState.every(c => c)) {
+    endGame(true);
+  } else {
+    currentPlayer = currentPlayer === 'X' ? 'O' : 'X';
+    statusText.textContent = `دور اللاعب: ${currentPlayer}`;
+  }
+}
+
+function checkWin() {
+  const winCombos = [
+    [0,1,2],[3,4,5],[6,7,8],
+    [0,3,6],[1,4,7],[2,5,8],
+    [0,4,8],[2,4,6]
+  ];
+  return winCombos.some(combo => {
+    const [a,b,c] = combo;
+    return boardState[a] && boardState[a] === boardState[b] && boardState[a] === boardState[c];
+  });
+}
+
+function endGame(draw) {
+  gameActive = false;
+  if (draw) {
+    statusText.textContent = 'تعادل! 🎯';
+  } else {
+    statusText.textContent = `اللاعب ${currentPlayer} فاز! 🏆`;
+    scores[currentPlayer]++;
+    scores.total++;
+    saveScores();
+    updateScoresUI();
+  }
+}
+
+function restartGame() {
+  boardState = Array(9).fill(null);
+  gameActive = true;
+  statusText.textContent = `دور اللاعب: ${currentPlayer}`;
+  cells.forEach(cell => {
+    cell.textContent = '';
+    cell.classList.remove('disabled','x','o');
+  });
+}
+
+function resetAllGame() {
+  scores = {X:0, O:0, total:0};
+  localStorage.removeItem('xo_turquoise_scores');
+  restartGame();
+  updateScoresUI();
+}
+
+function saveScores() {
+  localStorage.setItem('xo_turquoise_scores', JSON.stringify(scores));
+}
+
+function updateScoresUI() {
+  scoreXEl.textContent = scores.X;
+  scoreOEl.textContent = scores.O;
+  scoreTotalEl.textContent = scores.total;
+}
+
+function playSound() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const o = ctx.createOscillator();
+    const g = ctx.createGain();
+    o.type = 'sine';
+    o.frequency.setValueAtTime(440, ctx.currentTime);
+    g.gain.setValueAtTime(0.05, ctx.currentTime);
+    o.connect(g);
+    g.connect(ctx.destination);
+    o.start();
+    o.stop(ctx.currentTime + 0.1);
+  } catch(e) {}
+}
+
+restartBtn.addEventListener('click', restartGame);
+resetBtn.addEventListener('click', resetAllGame);
+
+createBoard();
+updateScoresUI();
+</script>
+</body>
+</html>
